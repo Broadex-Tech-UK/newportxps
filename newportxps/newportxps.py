@@ -1,4 +1,4 @@
- #!/usr/bin/env python
+#!/usr/bin/env python
 
 import os
 import posixpath
@@ -6,7 +6,7 @@ import sys
 import time
 import socket
 from io import StringIO
-from configparser import  ConfigParser
+from configparser import ConfigParser
 import numpy as np
 
 from .debugtime import debugtime
@@ -15,14 +15,17 @@ from .XPS_C8_drivers import XPS, XPSException
 from .ftp_wrapper import SFTPWrapper, FTPWrapper
 
 IDLE, ARMING, ARMED, RUNNING, COMPLETE, WRITING, READING = \
-      'IDLE', 'ARMING', 'ARMED', 'RUNNING', 'COMPLETE', 'WRITING', 'READING'
+    'IDLE', 'ARMING', 'ARMED', 'RUNNING', 'COMPLETE', 'WRITING', 'READING'
+
 
 def withConnectedXPS(fcn):
     """decorator to ensure a NewportXPS is connected before a method is called"""
+
     def wrapper(self, *args, **kwargs):
         if self._sid is None or len(self.groups) < 1 or len(self.stages) < 1:
             self.connect()
         return fcn(self, *args, **kwargs)
+
     wrapper.__doc__ = fcn.__doc__
     wrapper.__name__ = fcn.__name__
     wrapper.__dict__.update(fcn.__dict__)
@@ -32,6 +35,7 @@ def withConnectedXPS(fcn):
 
 class NewportXPS:
     gather_header = '# XPS Gathering Data\n#--------------'
+
     def __init__(self, host, group=None,
                  username='Administrator', password='Administrator',
                  port=5001, timeout=10, extra_triggers=0,
@@ -99,11 +103,10 @@ class NewportXPS:
             for pos in this['positioners']:
                 stagename = '%s.%s' % (groupname, pos)
                 stage = self.stages[stagename]
-                out.append("   %s (%s)"  % (stagename, stage['stagetype']))
-                out.append("      Hardware Status: %s"  % (hstat[stagename]))
-                out.append("      Positioner Errors: %s"  % (perrs[stagename]))
+                out.append("   %s (%s)" % (stagename, stage['stagetype']))
+                out.append("      Hardware Status: %s" % (hstat[stagename]))
+                out.append("      Positioner Errors: %s" % (perrs[stagename]))
         return "\n".join(out)
-
 
     def connect(self):
         self._sid = self._xps.TCP_ConnectToServer(self.host,
@@ -129,7 +132,6 @@ class NewportXPS:
             self.read_systemini()
         except:
             print("Could not read system.ini!!!")
-
 
     def check_error(self, err, msg='', with_raise=True):
         if err != 0:
@@ -172,13 +174,13 @@ class NewportXPS:
         initext = '\n'.join([line.strip() for line in lines])
 
         pvtgroups = []
-        self.stages= {}
+        self.stages = {}
         self.groups = {}
         sconf = ConfigParser()
         sconf.readfp(StringIO(initext))
 
         # read and populate lists of groups first
-        for gtype, glist in sconf.items('GROUPS'): # ].items():
+        for gtype, glist in sconf.items('GROUPS'):  # ].items():
             if len(glist) > 0:
                 for gname in glist.split(','):
                     gname = gname.strip()
@@ -196,7 +198,7 @@ class NewportXPS:
                 poslist = sconf.get(section, 'positionerinuse')
                 posnames = [a.strip() for a in poslist.split(',')]
                 self.groups[section]['positioners'] = posnames
-            elif 'plugnumber' in items: # this is a stage
+            elif 'plugnumber' in items:  # this is a stage
                 self.stages[section] = {'stagetype': sconf.get(section, 'stagename')}
 
         if len(pvtgroups) == 1:
@@ -205,13 +207,13 @@ class NewportXPS:
         for sname in self.stages:
             ret = self._xps.PositionerMaximumVelocityAndAccelerationGet(self._sid, sname)
             try:
-                self.stages[sname]['max_velo']  = ret[1]
-                self.stages[sname]['max_accel'] = ret[2]/3.0
+                self.stages[sname]['max_velo'] = ret[1]
+                self.stages[sname]['max_accel'] = ret[2] / 3.0
             except:
                 print("could not set max velo/accel for %s" % sname)
             ret = self._xps.PositionerUserTravelLimitsGet(self._sid, sname)
             try:
-                self.stages[sname]['low_limit']  = ret[1]
+                self.stages[sname]['low_limit'] = ret[1]
                 self.stages[sname]['high_limit'] = ret[2]
             except:
                 print("could not set limits for %s" % sname)
@@ -231,7 +233,7 @@ class NewportXPS:
         self.ftpconn.save(filename, filename)
         self.ftpconn.close()
 
-    def upload_trajectory(self, filename,  text):
+    def upload_trajectory(self, filename, text):
         """upload text of trajectory file
 
         Arguments:
@@ -390,7 +392,7 @@ class NewportXPS:
                                   'inttime', 'dfilter', 'gkp', 'gki', 'gkd',
                                   'kform', 'ffgain')):
             out[name] = params[i]
-        return(out)
+        return (out)
 
     @withConnectedXPS
     def set_trajectory_group(self, group, reenable=False):
@@ -422,7 +424,7 @@ class NewportXPS:
             try:
                 self.enable_group(self.traj_group)
             except XPSException:
-                print("Warning: could not enable trajectory group '%s'"% self.traj_group)
+                print("Warning: could not enable trajectory group '%s'" % self.traj_group)
                 return
 
         for i in range(64):
@@ -444,7 +446,6 @@ class NewportXPS:
         trajline3 = (','.join(trajline3)).strip()
         self.linear_template = '\n'.join(['', trajline1, trajline2, trajline3])
         self.linear_template = '\n'.join(['', trajline1, trajline2, trajline3, ''])
-
 
     @withConnectedXPS
     def _group_act(self, method, group=None, action='doing something',
@@ -489,7 +490,6 @@ class NewportXPS:
         for g in self.groups:
             self.home_group(group=g)
 
-
     def initialize_group(self, group=None, with_encoder=True, home=False,
                          with_raise=True):
         """
@@ -501,7 +501,7 @@ class NewportXPS:
         """
         method = 'GroupInitialize'
         if with_encoder:
-            method  = 'GroupInitializeWithEncoderCalibration'
+            method = 'GroupInitializeWithEncoderCalibration'
         self._group_act(method, group=group, action='initializing',
                         with_raise=with_raise)
         if home:
@@ -530,7 +530,6 @@ class NewportXPS:
             if group is `None`, all groups will be enabled.
         """
         self._group_act('GroupMotionEnable', group=group, action='enabling')
-
 
     def disable_group(self, group=None):
         """disable group
@@ -596,7 +595,7 @@ class NewportXPS:
 
     @withConnectedXPS
     def set_velocity(self, stage, velo, accl=None,
-                    min_jerktime=None, max_jerktime=None):
+                     min_jerktime=None, max_jerktime=None):
         """
         set velocity for stage
         """
@@ -604,7 +603,7 @@ class NewportXPS:
             print("Stage '%s' not found" % stage)
             return
         ret, v_cur, a_cur, jt0_cur, jt1_cur = \
-             self._xps.PositionerSGammaParametersGet(self._sid, stage)
+            self._xps.PositionerSGammaParametersGet(self._sid, stage)
         if accl is None:
             accl = a_cur
         if min_jerktime is None:
@@ -624,7 +623,6 @@ class NewportXPS:
             return
         ret = self._xps.GroupMoveAbort(self._sid, group)
         print('abort group ', group, ret)
-
 
     @withConnectedXPS
     def move_group(self, group=None, **kws):
@@ -647,7 +645,7 @@ class NewportXPS:
             if p in kwargs:
                 vals.append(kwargs[p])
             else:
-                vals.append(ret[i+1])
+                vals.append(ret[i + 1])
         self._xps.GroupMoveAbsolute(self._sid, group, vals)
 
     @withConnectedXPS
@@ -682,6 +680,7 @@ class NewportXPS:
 
         err, ret = move(self._sid, stage, [value])
         self.check_error(err, msg="Moving stage '%s'" % (stage))
+        a
         return ret
 
     @withConnectedXPS
@@ -730,11 +729,10 @@ class NewportXPS:
 
                 if time.time() > maxtime:
                     break
-            if self._sid >=0:
+            if self._sid >= 0:
                 self.connect()
             else:
                 print("Could not reconnect to XPS.")
-
 
     @withConnectedXPS
     def define_line_trajectories(self, axis, group=None,
@@ -756,39 +754,39 @@ class NewportXPS:
                 break
 
         # print(" Stage ", stage,  self.stages[stage])
-        max_velo  = 0.75*self.stages[stage]['max_velo']
-        max_accel = 0.5*self.stages[stage]['max_accel']
+        max_velo = 0.75 * self.stages[stage]['max_velo']
+        max_accel = 0.5 * self.stages[stage]['max_accel']
 
         if accel is None:
             accel = max_accel
         accel = min(accel, max_accel)
 
-        scandir  = 1.0
+        scandir = 1.0
         if start > stop:
             scandir = -1.0
-        step = scandir*abs(step)
+        step = scandir * abs(step)
 
-        npulses  = int((abs(stop - start) + abs(step)*1.1) / abs(step))
+        npulses = int((abs(stop - start) + abs(step) * 1.1) / abs(step))
         scantime = float(abs(scantime))
-        pixeltime= scantime / (npulses-1)
-        scantime = pixeltime*npulses
+        pixeltime = scantime / (npulses - 1)
+        scantime = pixeltime * npulses
 
-        distance = (abs(stop - start) + abs(step))*1.0
-        velocity = min(distance/scantime, max_velo)
+        distance = (abs(stop - start) + abs(step)) * 1.0
+        velocity = min(distance / scantime, max_velo)
 
-        ramptime = max(2.e-5, abs(velocity/accel))
-        rampdist = velocity*ramptime
-        offset   = step/2.0 + scandir*rampdist
+        ramptime = max(2.e-5, abs(velocity / accel))
+        rampdist = velocity * ramptime
+        offset = step / 2.0 + scandir * rampdist
 
         trajbase = {'axes': [axis], 'pixeltime': pixeltime,
                     'npulses': npulses, 'nsegments': 3}
 
-        self.trajectories['foreward'] = {'start': [start-offset],
-                                         'stop':  [stop +offset]}
+        self.trajectories['foreward'] = {'start': [start - offset],
+                                         'stop': [stop + offset]}
         self.trajectories['foreward'].update(trajbase)
 
-        self.trajectories['backward'] = {'start': [stop +offset],
-                                         'stop':  [start-offset]}
+        self.trajectories['backward'] = {'start': [stop + offset],
+                                         'stop': [start - offset]}
         self.trajectories['backward'].update(trajbase)
 
         base = {'start': start, 'stop': stop, 'step': step,
@@ -803,7 +801,7 @@ class NewportXPS:
 
         back = fore.copy()
         back["%s_start" % axis] = fore["%s_stop" % axis]
-        back["%s_stop" % axis]  = fore["%s_start" % axis]
+        back["%s_stop" % axis] = fore["%s_start" % axis]
         for attr in ('velo', 'ramp', 'dist'):
             back["%s_%s" % (axis, attr)] *= -1.0
 
@@ -836,10 +834,10 @@ class NewportXPS:
 
         traj = self.trajectories.get(name, None)
         if traj is None:
-            raise XPSException("Cannot find trajectory named '%s'" %  name)
+            raise XPSException("Cannot find trajectory named '%s'" % name)
 
         self.traj_state = ARMING
-        self.traj_file = '%s.trj'  % name
+        self.traj_file = '%s.trj' % name
 
         # move_kws = {}
         outputs = []
@@ -847,7 +845,7 @@ class NewportXPS:
             for i, ax in enumerate(traj['axes']):
                 outputs.append('%s.%s.%s' % (self.traj_group, ax, out))
 
-        end_segment = traj['nsegments'] # - 1 + self.extra_triggers
+        end_segment = traj['nsegments']  # - 1 + self.extra_triggers
         self.nsegments = end_segment
 
         self.gather_titles = "%s\n#%s\n" % (self.gather_header, " ".join(outputs))
@@ -862,7 +860,7 @@ class NewportXPS:
         if verbose:
             print(" GatheringConfigurationSet outputs ", outputs)
             print(" GatheringConfigurationSet returned ", ret)
-            print(" segments, pixeltime" , end_segment, traj['pixeltime'])
+            print(" segments, pixeltime", end_segment, traj['pixeltime'])
 
         err, ret = self._xps.MultipleAxesPVTPulseOutputSet(self._sid, self.traj_group,
                                                            2, end_segment,
@@ -902,31 +900,31 @@ class NewportXPS:
 
         buffer = ('Always', '%s.PVT.TrajectoryPulse' % self.traj_group,)
         err, ret = self._xps.EventExtendedConfigurationTriggerSet(self._sid, buffer,
-                                                                  ('0','0'), ('0','0'),
-                                                                  ('0','0'), ('0','0'))
+                                                                  ('0', '0'), ('0', '0'),
+                                                                  ('0', '0'), ('0', '0'))
         self.check_error(err, msg="EventConfigTrigger")
         if verbose:
-            print( " EventExtended Trigger Set ", ret)
+            print(" EventExtended Trigger Set ", ret)
 
         err, ret = self._xps.EventExtendedConfigurationActionSet(self._sid,
-                                                            ('GatheringOneData',),
-                                                            ('',), ('',),('',),('',))
+                                                                 ('GatheringOneData',),
+                                                                 ('',), ('',), ('',), ('',))
         self.check_error(err, msg="EventConfigAction")
         if verbose:
-            print( " EventExtended Action  Set ", ret)
+            print(" EventExtended Action  Set ", ret)
 
         eventID, m = self._xps.EventExtendedStart(self._sid)
         self.traj_state = RUNNING
 
         if verbose:
-            print( " EventExtended ExtendedStart ", eventID, m)
+            print(" EventExtended ExtendedStart ", eventID, m)
 
         err, ret = self._xps.MultipleAxesPVTExecution(self._sid,
                                                       self.traj_group,
                                                       self.traj_file, 1)
         self.check_error(err, msg="PVT Execute", with_raise=False)
         if verbose:
-            print( " PVT Execute  ", ret)
+            print(" PVT Execute  ", ret)
 
         ret = self._xps.EventExtendedRemove(self._sid, eventID)
         ret = self._xps.GatheringStop(self._sid)
@@ -971,7 +969,7 @@ class NewportXPS:
             except SyntaxError:
                 print("#XPS Gathering Read failed, will try again")
                 pass
-            if time.time()-t0 > 5:
+            if time.time() - t0 > 5:
                 print("Failed to get gathering size after 5 seconds: return 0 points")
                 print("Gather Returned: ", ret, npulses, nx, self._xps, time.ctime())
                 return (0, ' \n')
@@ -983,7 +981,7 @@ class NewportXPS:
             counter += 1
             time.sleep(0.25)
             ret, npulses, nx = self._xps.GatheringCurrentNumberGet(self._sid)
-            print( 'Had to do repeat XPS Gathering: ', ret, npulses, nx)
+            print('Had to do repeat XPS Gathering: ', ret, npulses, nx)
         dt.add("gather before multilinesget, npulses=%d" % (npulses))
         try:
             ret, buff = self._xps.GatheringDataMultipleLinesGet(self._sid, 0, npulses)
@@ -994,7 +992,7 @@ class NewportXPS:
         nchunks = -1
         if ret < 0:  # gathering too long: need to read in chunks
             nchunks = 3
-            nx  = int((npulses-2) / nchunks)
+            nx = int((npulses - 2) / nchunks)
             ret = 1
             while True:
                 time.sleep(0.05)
@@ -1002,22 +1000,22 @@ class NewportXPS:
                 if ret == 0:
                     break
                 nchunks = nchunks + 2
-                nx      = int((npulses-2) / nchunks)
+                nx = int((npulses - 2) / nchunks)
                 if nchunks > 10:
                     print('looks like something is wrong with the XPS!')
                     break
             buff = [xbuff]
             for i in range(1, nchunks):
-                ret, xbuff = self._xps.GatheringDataMultipleLinesGet(self._sid, i*nx, nx)
+                ret, xbuff = self._xps.GatheringDataMultipleLinesGet(self._sid, i * nx, nx)
                 buff.append(xbuff)
-            ret, xbuff = self._xps.GatheringDataMultipleLinesGet(self._sid, nchunks*nx,
-                                                                npulses-nchunks*nx)
+            ret, xbuff = self._xps.GatheringDataMultipleLinesGet(self._sid, nchunks * nx,
+                                                                 npulses - nchunks * nx)
             buff.append(xbuff)
             buff = ''.join(buff)
         dt.add("gather after got buffer  %d" % len(buff))
         obuff = buff[:]
         for x in ';\r\t':
-            obuff = obuff.replace(x,' ')
+            obuff = obuff.replace(x, ' ')
         dt.add("gather cleaned buffer  %d" % len(obuff))
         if set_idle_when_done:
             self.traj_state = IDLE
@@ -1061,11 +1059,10 @@ class NewportXPS:
             stop_values = stop_values[0]
             print("Cannot yet do multi-segment lines -- only doing first section")
 
-
         if accel_values is None:
             accel_values = []
             for posname in self.traj_positioners:
-                accel = self.stages["%s.%s"%(self.traj_group,  posname)]['max_accel']
+                accel = self.stages["%s.%s" % (self.traj_group, posname)]['max_accel']
                 accel_values.append(accel)
         accel_values = np.array(accel_values)
 
@@ -1074,7 +1071,7 @@ class NewportXPS:
         scan_time = float(abs(scan_time))
 
         ramp_time = 1.5 * max(abs(velocities / accel_values))
-        ramp      = velocities * ramp_time
+        ramp = velocities * ramp_time
         print("ramp : ", ramp_time, ramp)
 
         ramp_attr = {'ramptime': ramp_time}
@@ -1106,7 +1103,7 @@ class NewportXPS:
             attr[positioner + 'velo'] = velocities[pos_ind]
         move_strings.append(move_template % attr)
 
-        #construct trajectory:
+        # construct trajectory:
         trajectory_str = ramp_str + '\n'
         for move_string in move_strings:
             trajectory_str += move_string + '\n'
@@ -1180,11 +1177,11 @@ class NewportXPS:
 
         buffer = ('Always', self.traj_group + '.PVT.TrajectoryPulse')
         o = self._xps.EventExtendedConfigurationTriggerSet(self._sid, buffer,
-                                                          ('0', '0'), ('0', '0'),
-                                                          ('0', '0'), ('0', '0'))
+                                                           ('0', '0'), ('0', '0'),
+                                                           ('0', '0'), ('0', '0'))
 
         o = self._xps.EventExtendedConfigurationActionSet(self._sid, ('GatheringOneData',),
-                                                         ('',), ('',), ('',), ('',))
+                                                          ('',), ('',), ('',), ('',))
 
         eventID, m = self._xps.EventExtendedStart(self._sid)
 
@@ -1200,9 +1197,9 @@ class NewportXPS:
         return npulses
 
 
-
 if __name__ == '__main__':
     import sys
+
     ipaddr = sys.argv[1]
     x = NewportXPS(ipaddr)
     x.read_systemini()

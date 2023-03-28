@@ -1,7 +1,8 @@
 #!/usr/bin/env python
-from __future__ import print_function
+# from __future__ import print_function
 
 import time
+
 
 class debugtime(object):
     def __init__(self, verbose=False):
